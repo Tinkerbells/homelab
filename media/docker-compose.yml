@@ -1,0 +1,334 @@
+version: "3.8"
+
+services:
+  gluetun:
+    image: qmcgaw/gluetun
+    container_name: gluetun
+    restart: unless-stopped
+    # line above must be uncommented to allow external containers to connect.
+    # See https://github.com/qdm12/gluetun-wiki/blob/main/setup/connect-a-container-to-gluetun.md#external-container-to-gluetun
+    cap_add:
+      - NET_ADMIN
+    ports:
+      - 6881:6881
+      - 6881:6881/udp
+      - 8888:8888
+      - 7878:7878 # Radarr
+      - 9117:9117 # Lidarr
+      - 8686:8686 # Sonarr
+      - 9696:9696 # Prowlarr
+      - 5055:5055 # jellyseerr
+      - 8096:8096 # jellyfin
+    volumes:
+      - ./gluetun/config:/gluetun
+
+    environment:
+      # See https://github.com/qdm12/gluetun-wiki/tree/main/setup#setup
+      - VPN_SERVICE_PROVIDER=custom   #put you prodiver name regarding gluetun setup manual
+      - VPN_TYPE=wireguard
+      - VPN_ENDPOINT_IP=142.54.160.100
+      - VPN_ENDPOINT_PORT=19347
+      - WIREGUARD_PUBLIC_KEY=dnz5i4Y06gW9u0dxZ3vBmk2aYgF/7zGAylNYi30Me3Y=
+      - WIREGUARD_PRIVATE_KEY=aGAu0p+HP5Rtjj2KlBObl+lIsaQwO9fjQO6AHQtDOFs=
+      - WIREGUARD_PRESHARED_KEY=oj6yWthRNzRWo2LyBYi9AyErkB1of1ejT6G58hlFb1Q=
+      - WIREGUARD_ADDRESSES=10.8.0.3/24
+      # Timezone for accurate log times
+      - TZ=Europe/Moscow
+      - UPDATER_PERIOD=24h
+      - HTTPPROXY=on
+      - HTTPPROXY_LOG=on
+      - HTTPPROXY_LISTENING_ADDRESS :8888
+    networks:
+      - proxy
+    security_opt:
+      - no-new-privileges:true
+
+  radarr:
+    container_name: radarr
+    image: ghcr.io/hotio/radarr:latest
+  #  network_mode: "service:gluetun" # uncomment if not using reverse proxy 
+    restart: unless-stopped
+    logging:
+      driver: json-file
+    #ports:  #uncomment if not using reverse proxy
+    #  - 7878:7878
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - UNMASK=002
+      - TZ=Europe/Moscow
+    volumes:
+      - /etc/localtime:/etc/localtime:ro
+      - ./radarr:/config
+      - /data:/data
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.radarr.entrypoints=http"
+      - "traefik.http.routers.radarr.rule=Host(`radarr.tinkerbells.duckdns.org`)"
+      - "traefik.http.middlewares.radarr-https-redirect.redirectscheme.scheme=https"
+      - "traefik.http.routers.radarr.middlewares=radarr-https-redirect"
+      - "traefik.http.routers.radarr-secure.entrypoints=https"
+      - "traefik.http.routers.radarr-secure.rule=Host(`radarr.tinkerbells.duckdns.org`)"
+      - "traefik.http.routers.radarr-secure.tls=true"
+      - "traefik.http.routers.radarr-secure.service=radarr"
+      - "traefik.http.services.radarr.loadbalancer.server.port=7878"
+      - "traefik.http.routers.radarr-secure.middlewares=middlewares-authentik@file"
+      - "traefik.docker.network=proxy"
+    network_mode: 'service:gluetun'
+    depends_on:
+      - gluetun
+    security_opt:
+      - no-new-privileges:true
+
+  sonarr:
+    container_name: sonarr
+    image: ghcr.io/hotio/sonarr:latest
+  #  network_mode: "service:gluetun" # uncomment if not using reverse proxy
+    restart: unless-stopped
+    logging:
+      driver: json-file
+    #ports: #uncomment if not using reverse proxy
+    # - 8989:8989
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - UNMASK=002
+      - TZ=Europe/Moscow
+    volumes:
+      - /etc/localtime:/etc/localtime:ro
+      - ./sonarr:/config
+      - /data:/data
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.sonarr.entrypoints=http"
+      - "traefik.http.routers.sonarr.rule=Host(`sonarr.tinkerbells.duckdns.org`)"
+      - "traefik.http.middlewares.sonarr-https-redirect.redirectscheme.scheme=https"
+      - "traefik.http.routers.sonarr.middlewares=sonarr-https-redirect"
+      - "traefik.http.routers.sonarr-secure.entrypoints=https"
+      - "traefik.http.routers.sonarr-secure.rule=Host(`sonarr.tinkerbells.duckdns.org`)"
+      - "traefik.http.routers.sonarr-secure.tls=true"
+      - "traefik.http.routers.sonarr-secure.service=sonarr"
+      - "traefik.http.services.sonarr.loadbalancer.server.port=8989"
+      - "traefik.http.routers.sonarr-secure.middlewares=middlewares-authentik@file"
+      - "traefik.docker.network=proxy"
+    network_mode: 'service:gluetun'
+    depends_on:
+      - gluetun
+    security_opt:
+      - no-new-privileges:true
+
+  prowlarr:
+    container_name: prowlarr
+    image: ghcr.io/hotio/prowlarr:latest
+  # network_mode: "service:gluetun" # uncomment if not using reverse proxy
+    restart: unless-stopped
+    #ports: #uncomment if not using reverse proxy
+    #  - 9696:9696
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - UMASK=002
+      - TZ=Europe/Moscow
+    volumes:
+      - /etc/localtime:/etc/localtime:ro
+      - ./prowlarr/config:/config
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.prowlarr.entrypoints=http"
+      - "traefik.http.routers.prowlarr.rule=Host(`prowlarr.tinkerbells.duckdns.org`)"
+      - "traefik.http.middlewares.prowlarr-https-redirect.redirectscheme.scheme=https"
+      - "traefik.http.routers.prowlarr.middlewares=prowlarr-https-redirect"
+      - "traefik.http.routers.prowlarr-secure.entrypoints=https"
+      - "traefik.http.routers.prowlarr-secure.rule=Host(`prowlarr.tinkerbells.duckdns.org`)"
+      - "traefik.http.routers.prowlarr-secure.tls=true"
+      - "traefik.http.routers.prowlarr-secure.service=prowlarr"
+      - "traefik.http.services.prowlarr.loadbalancer.server.port=9696"
+      - "traefik.http.routers.prowlarr-secure.middlewares=middlewares-authentik@file"
+      - "traefik.docker.network=proxy"
+    network_mode: 'service:gluetun'
+    depends_on:
+      - gluetun  
+    security_opt:
+      - no-new-privileges:true
+
+  bazarr:
+    container_name: bazarr
+    image: ghcr.io/hotio/bazarr:latest
+    restart: unless-stopped
+    logging:
+      driver: json-file
+    #ports: # uncomment if not using reverse proxy
+    #  - 6767:6767
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - UNMASK=002
+      - TZ=Europe/Moscow
+    volumes:
+      - /etc/localtime:/etc/localtime:ro
+      - ./bazarr/config:/config
+      - /data:/data
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.bazarr.entrypoints=http"
+      - "traefik.http.routers.bazarr.rule=Host(`bazarr.tinkerbells.duckdns.org`)"
+      - "traefik.http.middlewares.bazarr-https-redirect.redirectscheme.scheme=https"
+      - "traefik.http.routers.bazarr.middlewares=bazarr-https-redirect"
+      - "traefik.http.routers.bazarr-secure.entrypoints=https"
+      - "traefik.http.routers.bazarr-secure.rule=Host(`prwolarr.tinkerbells.duckdns.org`)"
+      - "traefik.http.routers.bazarr-secure.tls=true"
+      - "traefik.http.routers.bazarr-secure.service=bazarr"
+      - "traefik.http.services.bazarr.loadbalancer.server.port=6767"
+      - "traefik.http.routers.bazarr-secure.middlewares=middlewares-authentik@file"
+      - "traefik.docker.network=proxy"
+    networks:
+      - proxy
+    security_opt:
+      - no-new-privileges:true
+
+  qbittorrent:
+    container_name: qbittorrent
+    image: ghcr.io/hotio/qbittorrent:latest
+    ports:
+      - 10095:8080
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - UMASK=002
+      - TZ=Europe/Moscow
+    volumes:
+      - /etc/localtime:/etc/localtime:ro
+      - ./qbittorrent/config:/config
+      - /data:/data
+    restart: unless-stopped
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.qbittorrent.entrypoints=http"
+      - "traefik.http.routers.qbittorrent.rule=Host(`qbittorrent.tinkerbells.duckdns.org`)"
+      - "traefik.http.middlewares.qbittorrent-https-redirect.redirectscheme.scheme=https"
+      - "traefik.http.routers.qbittorrent.middlewares=qbittorrent-https-redirect"
+      - "traefik.http.routers.qbittorrent-secure.entrypoints=https"
+      - "traefik.http.routers.qbittorrent-secure.rule=Host(`qbittorrent.tinkerbells.duckdns.org`)"
+      - "traefik.http.routers.qbittorrent-secure.tls=true"
+      - "traefik.http.routers.qbittorrent-secure.service=qbittorrent"
+      - "traefik.http.services.qbittorrent.loadbalancer.server.port=8080"
+      - "traefik.http.routers.qbittorrent-secure.middlewares=middlewares-authentik@file"
+      - "traefik.docker.network=proxy"
+    networks:
+      - proxy
+    security_opt:
+      - no-new-privileges:true
+
+  lidarr:
+    container_name: lidarr
+    image: ghcr.io/hotio/lidarr:latest
+  # network_mode: "service:gluetun" # uncomment if not using reverse proxy
+   # ports: # uncomment if not using reverse proxy
+   #    - 8686:8686
+    environment:
+        - PUID=1000
+        - PGID=1000
+        - UNMASK=002
+        - TZ=Europe/Moscow
+    volumes:
+        - /etc/localtime:/etc/localtime:ro
+        - ./lidarr/config:/config
+        - /data:/data
+    restart: unless-stopped
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.lidarr.entrypoints=http"
+      - "traefik.http.routers.lidarr.rule=Host(`lidarr.tinkerbells.duckdns.org`)"
+      - "traefik.http.middlewares.lidarr-https-redirect.redirectscheme.scheme=https"
+      - "traefik.http.routers.lidarr.middlewares=lidarr-https-redirect"
+      - "traefik.http.routers.lidarr-secure.entrypoints=https"
+      - "traefik.http.routers.lidarr-secure.rule=Host(`lidarr.tinkerbells.duckdns.org`)"
+      - "traefik.http.routers.lidarr-secure.tls=true"
+      - "traefik.http.routers.lidarr-secure.service=lidarr"
+      - "traefik.http.services.lidarr.loadbalancer.server.port=8686"
+      - "traefik.http.routers.lidarr-secure.middlewares=middlewares-authentik@file"
+      - "traefik.docker.network=proxy"
+    network_mode: 'service:gluetun'
+    depends_on:
+      - gluetun    
+    security_opt:
+      - no-new-privileges:true
+
+  jellyseerr:
+    container_name: jellyseerr
+    image: ghcr.io/hotio/jellyseerr:latest
+  # network_mode: "service:gluetun" # uncomment if not using reverse proxy
+    #ports: # uncomment if not using reverse proxy
+    #  - 5055:5055
+    environment:
+      - LOG_LEVEL=info
+      - PUID=1000
+      - PGID=1000
+      - UMASK=002
+      - TZ=Europe/Moscow
+    volumes:
+      - /etc/localtime:/etc/localtime:ro
+      - ./jellyseerr/config:/config
+    restart: unless-stopped
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.overseerr.entrypoints=http"
+      - "traefik.http.routers.overseerr.rule=Host(`overseerr.tinkerbells.duckdns.org`)"
+      - "traefik.http.middlewares.overseerr-https-redirect.redirectscheme.scheme=https"
+      - "traefik.http.routers.overseerr.middlewares=overseerr-https-redirect"
+      - "traefik.http.routers.overseerr-secure.entrypoints=https"
+      - "traefik.http.routers.overseerr-secure.rule=Host(`overseerr.tinkerbells.duckdns.org`)"
+      - "traefik.http.routers.overseerr-secure.tls=true"
+      - "traefik.http.routers.overseerr-secure.service=overseerr"
+      - "traefik.http.services.overseerr.loadbalancer.server.port=5055"
+      - "traefik.docker.network=proxy"
+    network_mode: 'service:gluetun'
+    depends_on:
+      - gluetun  
+    security_opt:
+      - no-new-privileges:true
+
+  jellyfin:
+    image: ghcr.io/hotio/jellyfin
+    container_name: jellyfin
+    #group_add:
+    #  - '109'  # This needs to be the group id of running `stat -c '%g' /dev/dri/renderD128` on the docker host
+    environment:
+      - PUID=1000
+      - GUID=1000
+      - UNMASK=002
+      - TZ=Europe/Moscow
+    volumes:
+      - ./jellyfin/config:/config
+      - ./jellyfin/cache:/cache
+      - /data:/data
+    #ports: #You will need to uncomment if you aren't running app through a proxy
+    #  - 8096:8096
+    #  - 8920:8920 #optional
+    #  - 7359:7359/udp #optional
+    #  - 1900:1900/udp #optional
+    #devices: uncomment these and amend if you require GPU accelerated transcoding
+    #  - /dev/dri/renderD128:/dev/dri/renderD128
+    #  - /dev/dri/card0:/dev/dri/card0
+    restart: unless-stopped
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.jellyfin.entrypoints=http"
+      - "traefik.http.routers.jellyfin.rule=Host(`jellyfin.tinkerbells.duckdns.org`)"
+      - "traefik.http.middlewares.jellyfin-https-redirect.redirectscheme.scheme=https"
+      - "traefik.http.routers.jellyfin.middlewares=jellyfin-https-redirect"
+      - "traefik.http.routers.jellyfin-secure.entrypoints=https"
+      - "traefik.http.routers.jellyfin-secure.rule=Host(`jellyfin.tinkerbells.duckdns.org`)"
+      - "traefik.http.routers.jellyfin-secure.tls=true"
+      - "traefik.http.routers.jellyfin-secure.service=jellyfin"
+      - "traefik.http.routers.jellyseerr-secure.middlewares=middlewares-authentik@file"
+      - "traefik.http.services.jellyfin.loadbalancer.server.port=8096"
+      - "traefik.docker.network=proxy"
+    network_mode: 'service:gluetun'
+    security_opt:
+      - no-new-privileges:true
+
+networks:
+  proxy:
+    external: true
+
