@@ -5,17 +5,20 @@ services:
     image: traefik:latest
     ports:
       - 80:80
-      - 443:443
+      - 443:443/tcp
     networks:
       - proxy
     volumes:
+      - /etc/localtime:/etc/localtime:ro
       - /var/run/docker.sock:/var/run/docker.sock:ro
       - ./config/traefik.yml:/traefik.yml:ro
       - ./config/config.yml:/config.yml:ro
+      - ./config/acme.json:/acme.json
       - ./logs:/var/log/traefik
-      - ./letsencrypt:/letsencrypt
     environment:
-      - DUCKDNS_TOKEN=91c740a0-c347-4812-a00b-33e6be6e840f
+      CF_DNS_API_TOKEN: ${CF_DNS_API_TOKEN} # if using .env
+      TRAEFIK_DASHBOARD_CREDENTIALS: ${TRAEFIK_DASHBOARD_CREDENTIALS}
+    env_file: .env 
     labels:
       - traefik.enable=true
       - traefik.http.routers.traefik.entrypoints=http
@@ -25,6 +28,7 @@ services:
       - traefik.http.routers.traefik.middlewares=traefik-https-redirect
       - traefik.http.routers.traefik-secure.entrypoints=https
       - traefik.http.routers.traefik-secure.rule=Host(`traefik.tinkerbells.duckdns.org`)
+      - "traefik.http.routers.traefik-secure.tls=true"
       - traefik.http.routers.traefik-secure.service=api@internal
   whoami:
     image: traefik/whoami:v1.8
@@ -46,9 +50,5 @@ services:
 networks:
   proxy:
     name: proxy
-
-volumes:
-  letsencrypt:
-    name: letsencrypt
 
 
