@@ -5,7 +5,7 @@ services:
     image: ghcr.io/recyclarr/recyclarr
     container_name: recyclarr
     volumes:
-      - /home/user/docker/torrents/recyclarr:/config
+      - ./config/recyclarr:/config
     environment:
       - PUID=1000
       - PGID=1000
