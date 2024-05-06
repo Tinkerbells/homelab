@@ -1,0 +1,20 @@
+version: "3.8"
+
+services:
+ recyclarr:
+    image: ghcr.io/recyclarr/recyclarr
+    container_name: recyclarr
+    volumes:
+      - /home/user/docker/torrents/recyclarr:/config
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - UNMASK=002
+      - TZ=Europe/Moscow
+    networks:
+      - proxy
+
+networks:
+  proxy:
+    external: true
+
