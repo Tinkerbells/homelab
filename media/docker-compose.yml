@@ -20,7 +20,7 @@ services:
       - 5055:5055 # jellyseerr
       - 8096:8096 # jellyfin
     volumes:
-      - ./gluetun/config:/gluetun
+      - ./config/gluetun:/gluetun
 
     environment:
       # See https://github.com/qdm12/gluetun-wiki/tree/main/setup#setup
@@ -59,8 +59,8 @@ services:
       - TZ=Europe/Moscow
     volumes:
       - /etc/localtime:/etc/localtime:ro
-      - ./radarr:/config
-      - /mnt/pool:/data
+      - ./config/radarr:/config
+      - /mnt/pool/data:/data
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.radarr.entrypoints=http"
@@ -96,8 +96,8 @@ services:
       - TZ=Europe/Moscow
     volumes:
       - /etc/localtime:/etc/localtime:ro
-      - ./sonarr:/config
-      - /mnt/pool:/data
+      - ./config/sonarr:/config
+      - /mnt/pool/data:/data
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.sonarr.entrypoints=http"
@@ -131,7 +131,7 @@ services:
       - TZ=Europe/Moscow
     volumes:
       - /etc/localtime:/etc/localtime:ro
-      - ./prowlarr/config:/config
+      - ./config/prowlarr:/config
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.prowlarr.entrypoints=http"
@@ -166,8 +166,8 @@ services:
       - TZ=Europe/Moscow
     volumes:
       - /etc/localtime:/etc/localtime:ro
-      - ./bazarr/config:/config
-      - /mnt/pool:/data
+      - ./config/bazarr:/config
+      - /mnt/pool/data:/data
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.bazarr.entrypoints=http"
@@ -198,8 +198,8 @@ services:
       - TZ=Europe/Moscow
     volumes:
       - /etc/localtime:/etc/localtime:ro
-      - ./qbittorrent/config:/config
-      - /mnt/pool:/data
+      - ./config/qbittorrent:/config
+      - /mnt/pool/data:/data
     restart: unless-stopped
     labels:
       - "traefik.enable=true"
@@ -232,8 +232,8 @@ services:
         - TZ=Europe/Moscow
     volumes:
         - /etc/localtime:/etc/localtime:ro
-        - ./lidarr/config:/config
-        - /mnt/pool:/data
+        - ./config/lidarr:/config
+        - /mnt/pool/data:/data
     restart: unless-stopped
     labels:
       - "traefik.enable=true"
@@ -268,7 +268,7 @@ services:
       - TZ=Europe/Moscow
     volumes:
       - /etc/localtime:/etc/localtime:ro
-      - ./jellyseerr/config:/config
+      - ./config/jellyseerr:/config
     restart: unless-stopped
     labels:
       - "traefik.enable=true"
@@ -299,9 +299,9 @@ services:
       - UNMASK=002
       - TZ=Europe/Moscow
     volumes:
-      - ./jellyfin/config:/config
-      - ./jellyfin/cache:/cache
-      - /mnt/pool:/data
+      - ./config/jellyfin/config:/config
+      - ./config/jellyfin/cache:/cache
+      - /mnt/pool/data:/data
     #ports: #You will need to uncomment if you aren't running app through a proxy
     #  - 8096:8096
     #  - 8920:8920 #optional
